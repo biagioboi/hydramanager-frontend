@@ -11,6 +11,9 @@ export type BookingApi = {
   roomNumber: string;
   guestUsername?: string;
   guestFullName?: string;
+  guestFirstName?: string;
+  guestLastName?: string;
+  checkInMeal?: "BREAKFAST" | "LUNCH" | "DINNER" | null;
   adults: number;
   children: number;
   infants: number;
@@ -50,6 +53,11 @@ export type GuestApi = {
   firstName: string;
   lastName: string;
   email?: string | null;
+};
+
+export type AgencyApi = {
+  id: number;
+  agencyName: string;
 };
 
 export type UserResponse = {
@@ -371,6 +379,9 @@ export async function createBooking(
   payload: {
     roomNumber: string;
     userId: number;
+    agencyId?: number;
+    agencyReference?: string | null;
+    agencyBookingDate?: string | null;
     adults: number;
     children: number;
     infants: number;
@@ -398,6 +409,87 @@ export async function createBooking(
   }
 
   return (await res.json()) as BookingApi;
+}
+
+export async function fetchAgencies(baseUrl = defaultBaseUrl) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/agencies`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore caricamento agenzie");
+  }
+
+  return (await res.json()) as AgencyApi[];
+}
+
+export async function createAgency(
+  payload: { agencyName: string },
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/agencies`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore creazione agenzia");
+  }
+
+  return (await res.json()) as AgencyApi;
+}
+
+export async function updateAgency(
+  id: number | string,
+  payload: { agencyName: string },
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/agencies/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore aggiornamento agenzia");
+  }
+
+  return (await res.json()) as AgencyApi;
+}
+
+export async function deleteAgency(
+  id: number | string,
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/agencies/${id}`, {
+    method: "DELETE",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore cancellazione agenzia");
+  }
+
+  try {
+    return (await res.json()) as AgencyApi;
+  } catch {
+    return {} as AgencyApi;
+  }
 }
 
 export async function createGuest(
@@ -496,6 +588,47 @@ export async function updateBooking(
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || "Errore aggiornamento prenotazione");
+  }
+
+  return (await res.json()) as BookingApi;
+}
+
+export async function checkInBooking(
+  id: number | string,
+  payload: { meal: "BREAKFAST" | "LUNCH" | "DINNER" },
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/bookings/${id}/checkin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore check-in prenotazione");
+  }
+
+  return (await res.json()) as BookingApi;
+}
+
+export async function deleteCheckInBooking(
+  id: number | string,
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/bookings/${id}/checkin`, {
+    method: "DELETE",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore cancellazione check-in");
   }
 
   return (await res.json()) as BookingApi;

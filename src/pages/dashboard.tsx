@@ -10,6 +10,9 @@ import TablesManagement from "@/components/restaurant/tables-management";
 import HotelManagement from "@/components/hotel/hotel-management";
 import PaymentMethodsManagement from "@/components/system/payment-methods-management";
 import CashDepartmentsManagement from "@/components/system/cash-departments-management";
+import ShopsManagement from "@/components/extra/shops-management";
+import ProductsManagement from "@/components/extra/products-management";
+import CategoriesManagement from "@/components/extra/categories-management";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -20,10 +23,8 @@ export default function DashboardPage() {
       id: "hotel",
       label: "Hotel",
       submenu: [
-        { id: "hotel-list", label: "Lista camere" },
-        { id: "hotel-create", label: "Inserimento camere" },
-        { id: "hotel-edit", label: "Modifica camere" },
-        { id: "hotel-delete", label: "Cancellazione camere" },
+        { id: "hotel-management", label: "Gestione camere" },
+        { id: "hotel-agencies", label: "Gestione agenzie" },
       ],
     },
     {
@@ -37,8 +38,13 @@ export default function DashboardPage() {
       ],
     },
     {
-      id: "bar",
-      label: "Bar",
+      id: "extra",
+      label: "Extra",
+      submenu: [
+        { id: "extra-shops", label: "Gestione Shop" },
+        { id: "extra-categories", label: "Gestione Categorie" },
+        { id: "extra-products", label: "Gestione Prodotti" },
+      ],
     },
     {
       id: "system",
@@ -68,23 +74,27 @@ export default function DashboardPage() {
         return <TablesManagement />;
       case "hotel":
         return <HotelManagement view="list" />;
-      case "hotel-list":
+      case "hotel-management":
         return <HotelManagement view="list" />;
-      case "hotel-create":
-        return <HotelManagement view="create" />;
-      case "hotel-edit":
-        return <HotelManagement view="edit" />;
-      case "hotel-delete":
-        return <HotelManagement view="delete" />;
-      case "bar":
+      case "hotel-agencies":
+        return <HotelManagement view="agencies" />;
+      case "extra":
         return (
           <Card>
             <CardBody>
-              <h2 className="text-2xl font-bold">Gestione Bar</h2>
-              <p className="mt-4 text-default-500">In sviluppo...</p>
+              <h2 className="text-2xl font-bold">Gestione Extra</h2>
+              <p className="mt-4 text-default-500">
+                Seleziona una sezione Extra dal menu
+              </p>
             </CardBody>
           </Card>
         );
+      case "extra-shops":
+        return <ShopsManagement />;
+      case "extra-categories":
+        return <CategoriesManagement />;
+      case "extra-products":
+        return <ProductsManagement />;
       case "payment-methods":
         return <PaymentMethodsManagement />;
       case "cash-departments":

@@ -43,16 +43,35 @@ function addMonths(d: Date, delta: number) {
 }
 
 function surnameFromBooking(b: BookingApi): string {
-  if (b.guestFullName) {
-    const parts = b.guestFullName.trim().split(/\s+/);
-    return parts[parts.length - 1] ?? "";
-  }
-  return b.guestUsername || "";
+  const rawSurname = b.guestLastName
+    ? b.guestLastName
+    : b.guestFullName
+      ? b.guestFullName.trim().split(/\s+/).slice(-1)[0] ?? ""
+      : "";
+  const normalized = rawSurname
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  const surname = normalized
+    ? normalized
+        .split(" ")
+        .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : ""))
+        .filter(Boolean)
+        .join(" ")
+        .slice(0, 15)
+    : "";
+  const total =
+    Number(b.adults ?? 0) +
+    Number(b.children ?? 0) +
+    Number(b.infants ?? 0);
+  if (total && surname) return `${total} x ${surname}`;
+  if (total) return String(total);
+  return surname;
 }
 
 function getBookingColor(b: BookingApi) {
-  if (b.status === "ARRIVED" || b.status === "CONFIRMED") return "bg-red-200";
-  if (b.status === "INSERTED") return "bg-amber-200";
+  if (b.status === "ARRIVED" || b.status === "CONFIRMED") return "bg-green-400";
+  if (b.status === "INSERTED") return "bg-amber-400";
   return "bg-default-200";
 }
 
