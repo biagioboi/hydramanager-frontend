@@ -197,7 +197,7 @@ export const DishesManagement = () => {
 
       {/* Modal Aggiunta Piatto */}
       <Modal isOpen={isDishModalOpen} onOpenChange={onDishModalOpenChange}>
-        <ModalContent>
+        <ModalContent className="w-[95vw] max-w-[1400px]">
           <ModalHeader className="flex flex-col gap-1">
             Aggiungi Piatto:{" "}
             <span className="text-primary">{dishSearchQuery}</span>

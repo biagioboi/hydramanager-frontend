@@ -1,30 +1,105 @@
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { Providers } from "../app/providers";
+function ProtectedRoute({ children }: { children: JSX.Element }) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+  if (!token) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
 
 import IndexPage from "@/pages/index";
-import DocsPage from "@/pages/docs";
-import PricingPage from "@/pages/pricing";
-import BlogPage from "@/pages/blog";
-import AboutPage from "@/pages/about";
-import AuthPage from "@/pages/auth";
 import DashboardPage from "@/pages/dashboard";
 import ReceptionistPage from "@/pages/receptionist";
 import WaiterPage from "@/pages/waiter";
 import MaitrePage from "@/pages/maitre";
+import BarmanPage from "@/pages/barman";
+import RepairmanPage from "@/pages/repairman";
+
+
+function getDashboardPathByRole(role?: string): string {
+  switch (role) {
+    case "receptionist":
+      return "/receptionist";
+    case "waiter":
+      return "/waiter";
+    case "maitre":
+      return "/maitre";
+    case "barman":
+      return "/barman";
+    case "repairman":
+      return "/repairman";
+    default:
+      return "/dashboard";
+  }
+}
 
 function App() {
+  const location = useLocation();
+  const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+  const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
+
   return (
-    <Routes>
-      <Route element={<IndexPage />} path="/" />
-      <Route element={<DocsPage />} path="/docs" />
-      <Route element={<PricingPage />} path="/pricing" />
-      <Route element={<BlogPage />} path="/blog" />
-      <Route element={<AboutPage />} path="/about" />
-      <Route element={<AuthPage />} path="/auth" />
-      <Route element={<DashboardPage />} path="/dashboard" />
-      <Route element={<ReceptionistPage />} path="/receptionist" />
-      <Route element={<WaiterPage />} path="/waiter" />
-      <Route element={<MaitrePage />} path="/maitre" />
-    </Routes>
+    <Providers>
+      <Routes>
+      <Route
+        path="/"
+        element={
+          token && role
+            ? <Navigate to={getDashboardPathByRole(role)} replace state={{ from: location }} />
+            : <IndexPage />
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/receptionist"
+        element={
+          <ProtectedRoute>
+            <ReceptionistPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/waiter"
+        element={
+          <ProtectedRoute>
+            <WaiterPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/maitre"
+        element={
+          <ProtectedRoute>
+            <MaitrePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/barman"
+        element={
+          <ProtectedRoute>
+            <BarmanPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/repairman"
+        element={
+          <ProtectedRoute>
+            <RepairmanPage />
+          </ProtectedRoute>
+        }
+      />
+      </Routes>
+    </Providers>
   );
 }
 

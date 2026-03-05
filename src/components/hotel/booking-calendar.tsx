@@ -30,16 +30,10 @@ function parseYMD(ymd: string) {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
-function startOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-
-function endOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
-}
-
-function addMonths(d: Date, delta: number) {
-  return new Date(d.getFullYear(), d.getMonth() + delta, 1);
+function addDays(d: Date, delta: number) {
+  const next = new Date(d);
+  next.setDate(next.getDate() + delta);
+  return next;
 }
 
 function surnameFromBooking(b: BookingApi): string {
@@ -99,7 +93,7 @@ function HalfDiamond({ side, className }: { side: "left" | "right"; className: s
 
   return (
     <div
-      className={["absolute top-0 bottom-0", "opacity-90", className].join(" ")}
+      className={["absolute top-0 bottom-0", className].join(" ")}
       style={style}
       aria-hidden="true"
     />
@@ -118,6 +112,8 @@ export default function BookingCalendar({
   onBookingMove,
   onBookingContextMenu,
 }: Props) {
+  // Stato per la visualizzazione ottimistica del drag
+  const [draggedBookingId, setDraggedBookingId] = useState<string | number | null>(null);
   const [selection, setSelection] = useState<{
     roomNumber: string;
     startIndex: number;
@@ -137,6 +133,7 @@ export default function BookingCalendar({
     booking: BookingApi;
     x: number;
     y: number;
+    placement: "top" | "bottom";
   } | null>(null);
 
   const [isDragging, setIsDragging] = useState(false);
@@ -164,36 +161,40 @@ export default function BookingCalendar({
       const [y, m] = initialMonth.split("-").map(Number);
       return new Date(y, (m ?? 1) - 1, 1);
     }
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    return new Date();
   }, [initialMonth]);
 
-  const [month, setMonth] = useState<Date>(initial);
-
-  const monthStart = useMemo(() => startOfMonth(month), [month]);
-  const monthEnd = useMemo(() => endOfMonth(month), [month]);
+  const [windowStart, setWindowStart] = useState<Date>(initial);
 
   const daysInMonth = useMemo(() => {
     const res: Date[] = [];
-    const d = new Date(monthStart);
-    if (days && days > 0) {
-      for (let i = 0; i < days; i += 1) {
-        const day = new Date(monthStart);
-        day.setDate(monthStart.getDate() + i);
-        res.push(day);
-      }
-      return res;
-    }
-    while (d.getTime() <= monthEnd.getTime()) {
-      res.push(new Date(d));
-      d.setDate(d.getDate() + 1);
+    const span = days && days > 0 ? days : 30;
+    for (let i = 0; i < span; i += 1) {
+      res.push(addDays(windowStart, i));
     }
     return res;
-  }, [monthStart, monthEnd, days]);
+  }, [windowStart, days]);
 
-  const monthLabel = useMemo(() => {
-    return month.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
-  }, [month]);
+  const windowLabel = useMemo(() => {
+    const start = daysInMonth[0];
+    const end = daysInMonth[daysInMonth.length - 1];
+    if (!start || !end) return "";
+    return `${start.toLocaleDateString("it-IT")} → ${end.toLocaleDateString("it-IT")}`;
+  }, [daysInMonth]);
+
+  const monthGroups = useMemo(() => {
+    const groups: { label: string; span: number }[] = [];
+    daysInMonth.forEach((day) => {
+      const label = day.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
+      const last = groups[groups.length - 1];
+      if (!last || last.label !== label) {
+        groups.push({ label, span: 1 });
+      } else {
+        last.span += 1;
+      }
+    });
+    return groups;
+  }, [daysInMonth]);
 
   const bookingsByRoom = useMemo(() => {
     const map = new Map<string, BookingApi[]>();
@@ -345,6 +346,7 @@ export default function BookingCalendar({
       hasMoved: false,
     };
     setBookingTooltip(null);
+    setDraggedBookingId(booking.id); // Attiva la visualizzazione ottimistica
     const scrollContainer = containerRef.current;
     if (scrollContainer) {
       const rect = scrollContainer.getBoundingClientRect();
@@ -370,6 +372,7 @@ export default function BookingCalendar({
     dragOverRoomRef.current = null;
     setDragOverRoom(null);
     setDragGhost(null);
+    setDraggedBookingId(null); // Ripristina la visualizzazione
 
     if (!drag.hasMoved) return;
     bookingDragMovedRef.current = true;
@@ -481,8 +484,11 @@ export default function BookingCalendar({
       if (!containerRect) return;
       const rect = target.getBoundingClientRect();
       const x = rect.left - containerRect.left + rect.width / 2;
-      const y = rect.top - containerRect.top - 8;
-      setBookingTooltip({ booking, x, y });
+      const yTop = rect.top - containerRect.top - 8;
+      const yBottom = rect.bottom - containerRect.top + 8;
+      const placement = yTop < 60 ? "bottom" : "top";
+      const y = placement === "top" ? yTop : yBottom;
+      setBookingTooltip({ booking, x, y, placement });
     },
     []
   );
@@ -492,15 +498,18 @@ export default function BookingCalendar({
   }, []);
 
   return (
-    <div className="w-full">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="text-lg font-semibold capitalize">{monthLabel}</div>
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <div className="sticky top-0 z-40 mb-2 flex items-center justify-between gap-3 bg-white/95 backdrop-blur-sm border-b border-default-200">
+        <div className="text-xs font-semibold text-default-600">{windowLabel}</div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="flat" onPress={() => setMonth((m) => addMonths(m, -1))}>
-            ←
+          <Button size="sm" variant="flat" onPress={() => setWindowStart((current) => addDays(current, -14))}>
+            ← 2 settimane
           </Button>
-          <Button size="sm" variant="flat" onPress={() => setMonth((m) => addMonths(m, 1))}>
-            →
+          <Button size="sm" variant="flat" onPress={() => setWindowStart(new Date())}>
+            Oggi
+          </Button>
+          <Button size="sm" variant="flat" onPress={() => setWindowStart((current) => addDays(current, 14))}>
+            2 settimane →
           </Button>
           {onBack && (
             <Button size="sm" variant="flat" onPress={onBack}>
@@ -510,7 +519,7 @@ export default function BookingCalendar({
         </div>
       </div>
 
-      <div className="relative max-h-[70vh] overflow-auto" ref={containerRef}>
+      <div className="relative flex-1 overflow-auto" ref={containerRef}>
         <div className="relative">
           {dragGhost && (
             <div
@@ -530,20 +539,56 @@ export default function BookingCalendar({
           )}
           {bookingTooltip && !bookingDragRef.current && (
             <div
-              className="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-full"
+              className={`pointer-events-none absolute z-[9999] -translate-x-1/2 ${
+                bookingTooltip.placement === "top" ? "-translate-y-full" : "translate-y-0"
+              }`}
               style={{ left: bookingTooltip.x, top: bookingTooltip.y }}
               aria-hidden="true"
             >
               <div className="rounded-md border border-default-200 bg-white px-3 py-2 text-[11px] shadow-lg">
-                <div className="text-xs font-semibold">Camera {bookingTooltip.booking.roomNumber}</div>
-                <div className="mt-1 flex gap-2 text-[10px] text-default-600">
-                  <span>A {bookingTooltip.booking.adults}</span>
-                  <span>B {bookingTooltip.booking.children}</span>
-                  <span>I {bookingTooltip.booking.infants}</span>
-                </div>
-                <div className="mt-1 text-[10px] text-default-600">
-                  {formatTreatment(bookingTooltip.booking.treatment)}
-                </div>
+                {(() => {
+                  const surname =
+                    bookingTooltip.booking.guestLastName ||
+                    (bookingTooltip.booking.guestFullName
+                      ? bookingTooltip.booking.guestFullName.trim().split(/\s+/).slice(-1)[0]
+                      : "");
+                  const notes = bookingTooltip.booking.notes?.trim();
+                  const statusMap: Record<BookingApi["status"], string> = {
+                    INSERTED: "Inserita",
+                    CONFIRMED: "Confermata",
+                    ARRIVED: "Arrivato",
+                    CANCELLED: "Cancellata",
+                    DEPARTED: "Partito",
+                  };
+                  return (
+                    <>
+                      <div className="text-xs font-semibold">
+                        Camera {bookingTooltip.booking.roomNumber}
+                      </div>
+                      {surname && (
+                        <div className="mt-1 text-[10px] text-default-700">
+                          Cognome: <span className="font-semibold">{surname}</span>
+                        </div>
+                      )}
+                      <div className="mt-1 flex gap-2 text-[10px] text-default-600">
+                        <span>A {bookingTooltip.booking.adults}</span>
+                        <span>B {bookingTooltip.booking.children}</span>
+                        <span>I {bookingTooltip.booking.infants}</span>
+                      </div>
+                      <div className="mt-1 text-[10px] text-default-600">
+                        {formatTreatment(bookingTooltip.booking.treatment)}
+                      </div>
+                      <div className="mt-1 text-[10px] text-default-600">
+                        Stato: {statusMap[bookingTooltip.booking.status]}
+                      </div>
+                      {notes && (
+                        <div className="mt-1 max-w-[260px] text-[10px] text-default-600">
+                          Note: <span className="break-words">{notes}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -573,7 +618,21 @@ export default function BookingCalendar({
           >
         <thead className="bg-default-50 border-t border-default-200">
           <tr>
-            <th className="sticky top-0 z-20 w-[180px] border border-default-200 bg-default-50 px-2 py-1 text-left text-sm font-semibold shadow-[inset_-1px_0_0_rgba(0,0,0,0.08),inset_0_-1px_0_rgba(0,0,0,0.08)]">
+            <th className="sticky top-0 z-30 w-[180px] border border-default-200 bg-default-100 px-2 py-1 text-left text-[11px] font-semibold text-default-600 shadow-[inset_-1px_0_0_rgba(0,0,0,0.08),inset_0_-1px_0_rgba(0,0,0,0.08)]">
+              Mese
+            </th>
+            {monthGroups.map((group, index) => (
+              <th
+                key={`${group.label}-${index}`}
+                className="sticky top-0 z-30 border border-default-200 bg-default-100 px-1 py-1 text-center text-[11px] font-semibold text-default-600 shadow-[inset_-1px_0_0_rgba(0,0,0,0.08),inset_0_-1px_0_rgba(0,0,0,0.08)]"
+                colSpan={group.span}
+              >
+                {group.label}
+              </th>
+            ))}
+          </tr>
+          <tr>
+            <th className="sticky top-6 z-20 w-[180px] border border-default-200 bg-default-50 px-2 py-1 text-left text-sm font-semibold shadow-[inset_-1px_0_0_rgba(0,0,0,0.08),inset_0_-1px_0_rgba(0,0,0,0.08)]">
               Camera
             </th>
             {daysInMonth.map((d, index) => {
@@ -586,7 +645,7 @@ export default function BookingCalendar({
               return (
                 <th
                   key={ymd}
-                  className={`sticky top-0 z-20 min-w-[44px] border border-default-200 bg-default-50 px-1 py-1 text-center ${weekendClass} shadow-[inset_-1px_0_0_rgba(0,0,0,0.08),inset_0_-1px_0_rgba(0,0,0,0.08)]`}
+                  className={`sticky top-6 z-20 min-w-[44px] border border-default-200 bg-default-50 px-1 py-1 text-center ${weekendClass} shadow-[inset_-1px_0_0_rgba(0,0,0,0.08),inset_0_-1px_0_rgba(0,0,0,0.08)]`}
                   data-index={index}
                 >
                   <div className="flex flex-col items-center leading-tight">
@@ -718,7 +777,7 @@ export default function BookingCalendar({
                   cells.push(
                     <td
                       key={`${room.id}-${middleKey}-middle`}
-                      className={`border border-default-200 p-0 ${
+                      className={`border-y border-default-200 border-x-0 p-0 ${
                         dragOverRoom === room.roomNumber ? "ring-1 ring-primary-200" : ""
                       }`}
                       colSpan={middleSpan}
@@ -768,13 +827,20 @@ export default function BookingCalendar({
                 const weekendClass = isSunday ? "bg-red-50" : isSaturday ? "bg-default-100" : "";
                 const showLeft = startRanges.length > 0;
                 const showRight = endRanges.length > 0;
+                const activeRange = startRanges[0] ?? endRanges[0];
+                const isMultiDay = Boolean(activeRange && activeRange.end > activeRange.start);
+                const labelRange = startRanges.find((item) => item.start === item.end) ?? null;
+                const hasBothEdges = showLeft && showRight;
+                const removeRightBorder =
+                  (showLeft && !showRight && isMultiDay) || Boolean(labelRange) || hasBothEdges;
+                const removeLeftBorder =
+                  (showRight && !showLeft && isMultiDay) || Boolean(labelRange) || hasBothEdges;
                 const isSelected =
                   selection?.roomNumber === room.roomNumber &&
                   cellIndex >= Math.min(selection.startIndex, selection.endIndex) &&
                   cellIndex <= Math.max(selection.startIndex, selection.endIndex);
                 const canSelect = showRight && !showLeft;
                 const canEndOnStart = showLeft && !showRight;
-                const labelRange = startRanges.find((item) => item.start === item.end) ?? null;
                 const label = labelRange?.surname;
                 const color = (startRanges[0] ?? endRanges[0])?.colorClassName ?? "bg-default-200";
                 const booking = (startRanges[0] ?? endRanges[0])?.booking;
@@ -782,8 +848,10 @@ export default function BookingCalendar({
                 cells.push(
                   <td
                     key={`${room.id}-${ymd}-boundary`}
-                    className={`border border-default-200 p-0 ${weekendClass} ${
+                    className={`border-y border-default-200 border-x-0 p-0 ${weekendClass} ${
                       dragOverRoom === room.roomNumber ? "ring-1 ring-primary-200" : ""
+                    } ${removeLeftBorder ? "border-l-0" : ""} ${
+                      removeRightBorder ? "border-r-0" : ""
                     }`}
                     data-room={room.roomNumber}
                     data-index={cellIndex}
@@ -923,6 +991,7 @@ export default function BookingCalendar({
           </table>
         </div>
       </div>
+
     </div>
   );
 }

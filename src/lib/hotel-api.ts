@@ -1,23 +1,49 @@
+
+
+export async function fetchBookingsByDate(date: string, baseUrl = defaultBaseUrl) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/bookings/by-date?date=${encodeURIComponent(date)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore caricamento prenotazioni per data");
+  }
+  return (await res.json()) as BookingApi[];
+}
+import { fetchWithAuth } from "./auth";
 export type RoomApi = {
   id: number;
   roomNumber: string;
   capacity: number;
   roomType: string;
   description?: string | null;
+  features?: RoomFeatureApi[];
+};
+
+export type RoomFeatureApi = {
+  id: number;
+  name: string;
 };
 
 export type BookingApi = {
   id: number;
   roomNumber: string;
-  guestUsername?: string;
+  userId: number;
+  guestEmail?: string;
+  guestPhoneNumber?: string;
   guestFullName?: string;
   guestFirstName?: string;
   guestLastName?: string;
+  cardId?: number | null;
   checkInMeal?: "BREAKFAST" | "LUNCH" | "DINNER" | null;
   adults: number;
   children: number;
   infants: number;
   checkInDate: string;
+  agencyReference?: string | null;
+  agencyBookingDate?: string | null;
+  agencyId?: number | null;
   checkOutDate: string;
   price?: number | null;
   treatment: "ROOM_BREAKFAST" | "HALF_BOARD" | "FULL_BOARD";
@@ -36,6 +62,18 @@ export type CashDepartmentApi = {
   id: number;
   name: string;
   code: string;
+};
+
+export type NotificationApi = {
+  id: number;
+  message: string;
+  bookingId?: number | null;
+  // Supporta sia lowercase che uppercase inviati dal server
+  type?: "warning" | "error" | "success" | "WARNING" | "ERROR" | "SUCCESS" | null;
+  targetRole?: string | null;
+  status?: "SENT" | "READ" | "DELETED";
+  createdAt?: string | null;
+  readAt?: string | null;
 };
 
 export type DepositApi = {
@@ -60,6 +98,15 @@ export type AgencyApi = {
   agencyName: string;
 };
 
+export type AgencyTokenApi = {
+  id: number;
+  agencyId: number;
+  token: string;
+  revoked?: boolean;
+  createdAt?: string;
+  expiresAt?: string | null;
+};
+
 export type UserResponse = {
   id: number;
   username?: string;
@@ -70,20 +117,160 @@ export type UserResponse = {
   phoneNumber?: string;
 };
 
+export type RegisterResponse = {
+  id: number;
+  username?: string;
+  email?: string;
+};
+
+export type BarCardApi = {
+  id: number;
+  bookingId: number;
+  userId?: number,
+  username?: string;
+  balance: number;
+  createdAt?: string | null;
+};
+
+export async function fetchBarCards(bookingId?: number, baseUrl = defaultBaseUrl) {
+  const token = localStorage.getItem("authToken");
+  const query = bookingId ? `/by-booking/${encodeURIComponent(String(bookingId))}` : "";
+  const res = await fetch(`${baseUrl}/api/bar/cards${query}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore caricamento card");
+  }
+  return (await res.json()) as BarCardApi[];
+}
+
+export async function fetchBarCard(id: number | string, baseUrl = defaultBaseUrl) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/bar/cards/${id}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore caricamento card");
+  }
+  return (await res.json()) as BarCardApi;
+}
+
+
+// Placeholder: cerca una card tramite hash (se l'API non è presente restituisce null)
+export async function fetchCardByHash(hash: string, baseUrl = defaultBaseUrl) {
+  try {
+    const token = localStorage.getItem("authToken");
+    const res = await fetch(`${baseUrl}/api/bar/cards/search?hash=${encodeURIComponent(hash)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return null as any;
+    return (await res.json()) as BarCardApi | null;
+  } catch {
+    return null as any;
+  }
+}
+
+// Placeholder: transazioni associate a una card (restituisce array vuoto se l'endpoint non esiste)
+export async function fetchCardTransactions(cardId: number | string, baseUrl = defaultBaseUrl) {
+  try {
+    const token = localStorage.getItem("authToken");
+    const res = await fetch(`${baseUrl}/api/bar/cards/${cardId}/transactions`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return [] as any[];
+    return (await res.json()) as any[];
+  } catch {
+    return [] as any[];
+  }
+}
+
+export async function updatePsGuest(psId: string | number, data: any) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${defaultBaseUrl}/api/ps/${psId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
+export async function deletePsGuest(psId: string | number) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${defaultBaseUrl}/api/ps/${psId}`, { 
+    method: "DELETE", 
+    headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new Error(await res.text());
+  return true;
+}
+
+export async function fetchPsGuestsByBooking(bookingId: number) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${defaultBaseUrl}/api/ps/by-booking/${bookingId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
+export async function sendPsRegistration(bookingId: number, body: any) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${defaultBaseUrl}/api/ps/by-booking/${bookingId}`, {
+    headers: token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" },
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return res;
+}
+
+// Placeholder: ricarica la card (se l'endpoint non esiste lancia un errore)
+export async function rechargeCard(
+  cardId: number | string,
+  payload: { amount: number },
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/bar/cards/${cardId}/topup`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore ricarica card");
+  }
+  return (await res.json()) as any;
+}
+
+// Placeholder: elimina la card (se l'endpoint non esiste lancia un errore)
+export async function deleteCard(id: number | string, baseUrl = defaultBaseUrl) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/bar/cards/${id}`, {
+    method: "DELETE",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore cancellazione card");
+  }
+  return {};
+}
+
+
 const defaultBaseUrl =
   (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8080";
 
 export async function fetchRooms(baseUrl = defaultBaseUrl) {
-  const token = localStorage.getItem("authToken");
-  const res = await fetch(`${baseUrl}/api/rooms`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-
+  const res = await fetchWithAuth(`${baseUrl}/api/rooms`);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || "Errore caricamento camere");
   }
-
   return (await res.json()) as RoomApi[];
 }
 
@@ -93,6 +280,7 @@ export async function createRoom(
     capacity: number;
     roomType: string;
     description?: string | null;
+    featureIds?: number[];
   },
   baseUrl = defaultBaseUrl,
 ) {
@@ -121,6 +309,7 @@ export async function updateRoom(
     capacity: number;
     roomType: string;
     description?: string | null;
+    featureIds?: number[];
   },
   baseUrl = defaultBaseUrl,
 ) {
@@ -160,6 +349,83 @@ export async function deleteRoom(
   return {};
 }
 
+export async function fetchRoomFeatures(baseUrl = defaultBaseUrl) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/room-features`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore caricamento servizi camera");
+  }
+
+  return (await res.json()) as RoomFeatureApi[];
+}
+
+export async function createRoomFeature(
+  payload: { name: string },
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/room-features`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore creazione servizio camera");
+  }
+
+  return (await res.json()) as RoomFeatureApi;
+}
+
+export async function updateRoomFeature(
+  id: number | string,
+  payload: { name: string },
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/room-features/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore aggiornamento servizio camera");
+  }
+
+  return (await res.json()) as RoomFeatureApi;
+}
+
+export async function deleteRoomFeature(
+  id: number | string,
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/room-features/${id}`, {
+    method: "DELETE",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore cancellazione servizio camera");
+  }
+
+  return {} as RoomFeatureApi;
+}
+
 export async function fetchBookings(baseUrl = defaultBaseUrl) {
   const token = localStorage.getItem("authToken");
   const res = await fetch(`${baseUrl}/api/bookings`, {
@@ -172,6 +438,74 @@ export async function fetchBookings(baseUrl = defaultBaseUrl) {
   }
 
   return (await res.json()) as BookingApi[];
+}
+
+export async function fetchBooking(id: number | string, baseUrl = defaultBaseUrl) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/bookings/${id}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore caricamento prenotazione");
+  }
+  return (await res.json()) as BookingApi;
+}
+
+export async function fetchAgencyTokens(
+  agencyId?: number | string,
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const query = agencyId ? `?agencyId=${encodeURIComponent(String(agencyId))}` : "";
+  const res = await fetch(`${baseUrl}/api/agencies/tokens${query}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore caricamento token agenzie");
+  }
+
+  return (await res.json()) as AgencyTokenApi[];
+}
+
+export async function createAgencyToken(
+  agencyId: number | string,
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/agencies/${agencyId}/token`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore creazione token agenzia");
+  }
+
+  return (await res.json()) as AgencyTokenApi;
+}
+
+export async function deleteAgencyToken(
+  id: number | string,
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/agencies/token/${id}`, {
+    method: "DELETE",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore cancellazione token agenzia");
+  }
+
+  return {} as AgencyTokenApi;
 }
 
 export async function fetchPaymentMethods(baseUrl = defaultBaseUrl) {
@@ -271,6 +605,50 @@ export async function fetchCashDepartments(baseUrl = defaultBaseUrl) {
   return (await res.json()) as CashDepartmentApi[];
 }
 
+export async function fetchNotifications(
+  params?: { targetRole?: string; status?: string; includeDeleted?: boolean },
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const query = new URLSearchParams();
+  if (params?.targetRole) query.set("targetRole", params.targetRole);
+  if (params?.status) query.set("status", params.status);
+  if (params?.includeDeleted !== undefined) {
+    query.set("includeDeleted", String(params.includeDeleted));
+  }
+  const url = query.toString()
+    ? `${baseUrl}/api/notifications?${query.toString()}`
+    : `${baseUrl}/api/notifications`;
+  const res = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore caricamento notifiche");
+  }
+
+  return (await res.json()) as NotificationApi[];
+}
+
+export async function markNotificationRead(
+  id: number | string,
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/notifications/${id}/read`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore aggiornamento notifica");
+  }
+
+  return (await res.json()) as NotificationApi;
+}
+
 export async function createCashDepartment(
   payload: { name: string; code: string },
   baseUrl = defaultBaseUrl,
@@ -348,6 +726,21 @@ export async function fetchDeposits(baseUrl = defaultBaseUrl) {
   return (await res.json()) as DepositApi[];
 }
 
+
+export async function fetchDepositByBookingId(bookingId: number | string, baseUrl = defaultBaseUrl) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/deposits/by-booking/${bookingId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore caricamento acconti");
+  }
+
+  return (await res.json()) as DepositApi[];
+}
+
 export async function createDeposit(
   payload: {
     amount: number;
@@ -385,6 +778,7 @@ export async function createBooking(
     adults: number;
     children: number;
     infants: number;
+    price?: number | null;
     checkInDate: string;
     checkOutDate: string;
     treatment: "ROOM_BREAKFAST" | "HALF_BOARD" | "FULL_BOARD";
@@ -518,6 +912,35 @@ export async function createGuest(
   return (await res.json()) as GuestApi;
 }
 
+export async function registerStaff(
+  payload: {
+    firstName: string;
+    lastName: string;
+    username?: string;
+    email: string;
+    password: string;
+    role: string;
+  },
+  baseUrl = defaultBaseUrl,
+) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/auth/register/staff`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore creazione staff");
+  }
+
+  return (await res.json()) as RegisterResponse;
+}
+
 export async function searchUserByEmail(
   email: string,
   baseUrl = defaultBaseUrl,
@@ -537,6 +960,35 @@ export async function searchUserByEmail(
   }
 
   return (await res.json()) as UserResponse;
+}
+
+export async function fetchStaff(baseUrl = defaultBaseUrl) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/users/staff`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore caricamento staff");
+  }
+
+  return (await res.json()) as UserResponse[];
+}
+
+export async function deleteUser(id: number | string, baseUrl = defaultBaseUrl) {
+  const token = localStorage.getItem("authToken");
+  const res = await fetch(`${baseUrl}/api/users/${id}`, {
+    method: "DELETE",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore cancellazione utente");
+  }
+
+  return {};
 }
 
 export async function deleteBooking(
@@ -564,8 +1016,16 @@ export async function updateBooking(
   payload: Partial<{
     roomNumber: string;
     adults: number;
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    phoneNumber?: string | null;
     children: number;
     infants: number;
+    userId: number;
+    agencyId?: number;
+    agencyReference?: string | null;
+    agencyBookingDate?: string | null;
     checkInDate: string;
     checkOutDate: string;
     price?: number | null;
@@ -576,6 +1036,16 @@ export async function updateBooking(
   baseUrl = defaultBaseUrl,
 ) {
   const token = localStorage.getItem("authToken");
+
+  const res2 = await fetch(`${baseUrl}/api/users/guest/${payload.userId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
   const res = await fetch(`${baseUrl}/api/bookings/${id}`, {
     method: "PUT",
     headers: {
@@ -584,6 +1054,7 @@ export async function updateBooking(
     },
     body: JSON.stringify(payload),
   });
+
 
   if (!res.ok) {
     const text = await res.text();

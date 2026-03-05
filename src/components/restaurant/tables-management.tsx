@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Input } from "@heroui/input";
+import { fetchBookingsByDate, updateBooking, type BookingApi } from "@/lib/hotel-api";
 import { Select, SelectItem } from "@heroui/select";
 
 const STATUS_OPTIONS = [
@@ -45,6 +46,14 @@ export default function TablesManagement() {
   const [tableRowId, setTableRowId] = useState(rows[0]?.id ?? "");
   const [tableStatus, setTableStatus] = useState<TableStatus>("FREE");
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
+  const [referenceDate, setReferenceDate] = useState(() => {
+    const d = new Date();
+    const pad2 = (v: number) => String(v).padStart(2, "0");
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  });
+  const [bookings, setBookings] = useState<BookingApi[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
 
   const visibleTables = useMemo(
     () => tables.filter((table) => !table.mergedInto),
@@ -123,6 +132,55 @@ export default function TablesManagement() {
 
     setTables(updatedTables);
     setSelectedTables([]);
+  };
+
+  const addDays = (value: string, delta: number) => {
+    const [y, m, d] = value.split("-").map(Number);
+    const base = new Date(y, (m ?? 1) - 1, d ?? 1);
+    if (Number.isNaN(base.getTime())) return value;
+    base.setDate(base.getDate() + delta);
+    const pad2 = (v: number) => String(v).padStart(2, "0");
+    return `${base.getFullYear()}-${pad2(base.getMonth() + 1)}-${pad2(base.getDate())}`;
+  };
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setBookingsLoading(true);
+      try {
+        const list = await fetchBookingsByDate(referenceDate);
+        if (!active) return;
+        setBookings(Array.isArray(list) ? list : []);
+      } catch (err) {
+        setBookings([]);
+      } finally {
+        if (active) setBookingsLoading(false);
+      }
+    };
+    load();
+    return () => { active = false; };
+  }, [referenceDate]);
+
+  const unassignedArrivedBookings = bookings.filter((b) => {
+    const noTable = !b.tableNumber;
+    const arrived = b.status === "ARRIVED";
+    const within = b.checkInDate <= referenceDate && b.checkOutDate >= referenceDate;
+    return noTable && arrived && within;
+  });
+
+  const handleAssignSelectedBooking = async () => {
+    if (!selectedBookingId || selectedTables.length === 0) return;
+    const booking = bookings.find((b) => b.id === selectedBookingId);
+    const targetTable = tables.find((t) => t.id === selectedTables[0]);
+    if (!booking || !targetTable) return;
+    try {
+      const updated = await (updateBooking as any)(booking.id, { tableNumber: targetTable.label });
+      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+      setTables((prev) => prev.map((t) => (t.id === targetTable.id ? { ...t, status: "OCCUPIED" } : t)));
+      setSelectedBookingId(null);
+    } catch (err) {
+      // noop for now
+    }
   };
 
   const handleUnmerge = (table: TableItem) => {
@@ -218,6 +276,56 @@ export default function TablesManagement() {
               >
                 Unisci selezionati
               </Button>
+            </div>
+
+            <div className="rounded-md border border-default-200 p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-semibold">Associa prenotazioni</div>
+                  <div className="text-xs text-default-500">Mostra prenotazioni senza tavolo e con check-in</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="flat" onClick={() => setReferenceDate((prev) => addDays(prev, -1))}>
+                    &lt;
+                  </Button>
+                  <Input type="date" value={referenceDate} onChange={(e) => setReferenceDate(e.target.value)} />
+                  <Button size="sm" variant="flat" onClick={() => setReferenceDate((prev) => addDays(prev, 1))}>
+                    &gt;
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                {bookingsLoading ? (
+                  <div className="text-sm text-default-500">Caricamento...</div>
+                ) : unassignedArrivedBookings.length === 0 ? (
+                  <div className="text-sm text-default-500">Nessuna prenotazione da associare</div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {unassignedArrivedBookings.map((b) => (
+                      <div key={b.id} className={`p-2 rounded border ${selectedBookingId === b.id ? 'border-primary-400 bg-primary-50' : 'border-default-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm">
+                            <div><strong>{b.guestFullName || `${b.guestFirstName || ''} ${b.guestLastName || ''}`}</strong></div>
+                            <div className="text-xs text-default-500">{b.checkInDate} - {b.checkOutDate} • {b.adults} adulti</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant={selectedBookingId === b.id ? 'solid' : 'flat'} onClick={() => setSelectedBookingId(b.id)}>
+                              {selectedBookingId === b.id ? 'Selezionato' : 'Seleziona'}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex gap-2 mt-2">
+                      <Button color="primary" isDisabled={!selectedBookingId || selectedTables.length === 0} onClick={handleAssignSelectedBooking}>
+                        Assegna a tavolo selezionato
+                      </Button>
+                      <div className="text-xs text-default-500 self-center">Seleziona prima il tavolo dalla vista a destra</div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </CardBody>
         </Card>

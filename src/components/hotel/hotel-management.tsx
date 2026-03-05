@@ -14,8 +14,11 @@ import {
 
 import {
   createAgency,
+  createAgencyToken,
   deleteAgency,
+  deleteAgencyToken,
   createRoom,
+  fetchAgencyTokens,
   fetchAgencies,
   deleteRoom,
   updateAgency,
@@ -23,6 +26,7 @@ import {
   updateRoom,
   type RoomApi,
   type AgencyApi,
+  type AgencyTokenApi,
 } from "@/lib/hotel-api";
 
 type RoomType = {
@@ -40,7 +44,7 @@ type Room = {
 
 const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 
-type HotelView = "list" | "create" | "edit" | "delete" | "agencies";
+type HotelView = "list" | "create" | "edit" | "delete" | "agencies" | "tokens";
 
 export default function HotelManagement({ view = "list" }: { view?: HotelView }) {
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([
@@ -57,6 +61,10 @@ export default function HotelManagement({ view = "list" }: { view?: HotelView })
   const [agencyLoading, setAgencyLoading] = useState(false);
   const [agencyError, setAgencyError] = useState<string | null>(null);
   const [agencyView, setAgencyView] = useState<HotelView>("list");
+  const [agencyTokens, setAgencyTokens] = useState<AgencyTokenApi[]>([]);
+  const [tokenAgencyId, setTokenAgencyId] = useState("");
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
 
   const [typeName, setTypeName] = useState("");
 
@@ -114,6 +122,23 @@ export default function HotelManagement({ view = "list" }: { view?: HotelView })
     };
 
     loadAgencies();
+  }, []);
+
+  useEffect(() => {
+    const loadTokens = async () => {
+      setTokenLoading(true);
+      setTokenError(null);
+      try {
+        const data = await fetchAgencyTokens();
+        setAgencyTokens(data);
+      } catch (err) {
+        setTokenError((err as Error).message || "Errore caricamento token agenzie");
+      } finally {
+        setTokenLoading(false);
+      }
+    };
+
+    loadTokens();
   }, []);
 
   const handleAddType = () => {
@@ -250,6 +275,33 @@ export default function HotelManagement({ view = "list" }: { view?: HotelView })
     }
   };
 
+  const handleCreateToken = async () => {
+    if (!tokenAgencyId) return;
+    setTokenLoading(true);
+    setTokenError(null);
+    try {
+      const created = await createAgencyToken(Number(tokenAgencyId));
+      setAgencyTokens((prev) => [created, ...prev]);
+    } catch (err) {
+      setTokenError((err as Error).message || "Errore creazione token agenzia");
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
+  const handleDeleteToken = async (id: number) => {
+    setTokenLoading(true);
+    setTokenError(null);
+    try {
+      await deleteAgencyToken(id);
+      setAgencyTokens((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      setTokenError((err as Error).message || "Errore cancellazione token agenzia");
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
   const handleEditAgency = (agency: AgencyApi) => {
     setAgencyEditId(agency.id);
     setAgencyEditName(agency.agencyName);
@@ -295,7 +347,20 @@ export default function HotelManagement({ view = "list" }: { view?: HotelView })
   const showAgencyCreate = agencyView === "create";
   const showAgencyEdit = agencyView === "edit";
   const showAgencyDelete = agencyView === "delete";
-  const showAgencyList = agencyView !== "create";
+  const showAgencyList =
+    agencyView === "list" || agencyView === "edit" || agencyView === "delete";
+  const showAgencyTokens = agencyView === "tokens";
+
+  const agencyMap = useMemo(
+    () => new Map(agencies.map((agency) => [agency.id, agency])),
+    [agencies]
+  );
+
+  const filteredAgencyTokens = useMemo(() => {
+    if (!tokenAgencyId) return agencyTokens;
+    const id = Number(tokenAgencyId);
+    return agencyTokens.filter((token) => token.agencyId === id);
+  }, [agencyTokens, tokenAgencyId]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -457,7 +522,7 @@ export default function HotelManagement({ view = "list" }: { view?: HotelView })
       )}
 
       <Modal isOpen={editModalOpen} onOpenChange={cancelEditingRoom}>
-        <ModalContent>
+        <ModalContent className="w-[95vw] max-w-[1400px]">
           <ModalHeader className="flex flex-col gap-1">Modifica camera</ModalHeader>
           <ModalBody className="gap-3">
             <div className="grid gap-3 md:grid-cols-2">
@@ -525,6 +590,13 @@ export default function HotelManagement({ view = "list" }: { view?: HotelView })
               </Button>
               <Button
                 size="sm"
+                variant={agencyView === "tokens" ? "solid" : "flat"}
+                onClick={() => setAgencyView("tokens")}
+              >
+                Token accesso
+              </Button>
+              <Button
+                size="sm"
                 variant={agencyView === "edit" ? "solid" : "flat"}
                 onClick={() => setAgencyView("edit")}
               >
@@ -557,6 +629,57 @@ export default function HotelManagement({ view = "list" }: { view?: HotelView })
                   >
                     Aggiungi agenzia
                   </Button>
+                </div>
+              </div>
+            )}
+
+            {showAgencyTokens && (
+              <div className="flex flex-col gap-4">
+                {tokenError && <div className="text-sm text-red-600">{tokenError}</div>}
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Select
+                    label="Agenzia"
+                    selectedKeys={tokenAgencyId ? [tokenAgencyId] : []}
+                    onChange={(e) => setTokenAgencyId(e.target.value)}
+                  >
+                    {agencies.map((agency) => (
+                      <SelectItem key={String(agency.id)}>
+                        {agency.agencyName}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                  <div className="flex items-end">
+                    <Button color="primary" onClick={handleCreateToken} isLoading={tokenLoading}>
+                      Genera token
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  {filteredAgencyTokens.map((token) => {
+                    const agencyName = agencyMap.get(token.agencyId)?.agencyName ?? `ID ${token.agencyId}`;
+                    return (
+                      <div
+                        key={token.id ?? `${token.agencyId}-${token.token}`}
+                        className="rounded-md border border-default-200 bg-default-50 p-3"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <div className="text-sm font-semibold">{agencyName}</div>
+                            <div className="text-xs text-default-500">Token: {token.token}</div>
+                            <div className="text-xs text-default-500">
+                              Scadenza: {token.expiresAt || "-"}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" color="danger" variant="flat" onClick={() => handleDeleteToken(token.id)}>
+                              Revoca
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

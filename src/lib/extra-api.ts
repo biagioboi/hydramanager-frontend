@@ -1,3 +1,4 @@
+import { fetchWithAuth } from "./auth";
 export type StoreApi = {
   id: number;
   name: string;
@@ -45,14 +46,13 @@ const defaultBaseUrl =
   (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8080";
 
 const authHeaders = (): Record<string, string> => {
+  // Deprecated: usare fetchWithAuth per tutte le chiamate protette
   const token = localStorage.getItem("authToken");
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
 export async function fetchStores(baseUrl = defaultBaseUrl) {
-  const res = await fetch(`${baseUrl}/api/extra/stores`, {
-    headers: authHeaders(),
-  });
+  const res = await fetchWithAuth(`${baseUrl}/api/extra/stores`);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || "Errore caricamento shop");
@@ -64,12 +64,9 @@ export async function createStore(
   payload: { name: string },
   baseUrl = defaultBaseUrl,
 ) {
-  const res = await fetch(`${baseUrl}/api/extra/stores`, {
+  const res = await fetchWithAuth(`${baseUrl}/api/extra/stores`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -84,12 +81,9 @@ export async function updateStore(
   payload: { name: string },
   baseUrl = defaultBaseUrl,
 ) {
-  const res = await fetch(`${baseUrl}/api/extra/stores/${id}`, {
+  const res = await fetchWithAuth(`${baseUrl}/api/extra/stores/${id}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -103,9 +97,8 @@ export async function deleteStore(
   id: number | string,
   baseUrl = defaultBaseUrl,
 ) {
-  const res = await fetch(`${baseUrl}/api/extra/stores/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(),
+  const res = await fetchWithAuth(`${baseUrl}/api/extra/stores/${id}`, {
+    method: "DELETE"
   });
   if (!res.ok) {
     const text = await res.text();
@@ -115,9 +108,7 @@ export async function deleteStore(
 }
 
 export async function fetchCategories(baseUrl = defaultBaseUrl) {
-  const res = await fetch(`${baseUrl}/api/extra/categories`, {
-    headers: authHeaders(),
-  });
+  const res = await fetchWithAuth(`${baseUrl}/api/extra/categories`);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || "Errore caricamento categorie");
@@ -129,12 +120,9 @@ export async function createCategory(
   payload: { name: string },
   baseUrl = defaultBaseUrl,
 ) {
-  const res = await fetch(`${baseUrl}/api/extra/categories`, {
+  const res = await fetchWithAuth(`${baseUrl}/api/extra/categories`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -149,12 +137,9 @@ export async function updateCategory(
   payload: { name: string },
   baseUrl = defaultBaseUrl,
 ) {
-  const res = await fetch(`${baseUrl}/api/extra/categories/${id}`, {
+  const res = await fetchWithAuth(`${baseUrl}/api/extra/categories/${id}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -168,9 +153,8 @@ export async function deleteCategory(
   id: number | string,
   baseUrl = defaultBaseUrl,
 ) {
-  const res = await fetch(`${baseUrl}/api/extra/categories/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(),
+  const res = await fetchWithAuth(`${baseUrl}/api/extra/categories/${id}`, {
+    method: "DELETE"
   });
   if (!res.ok) {
     const text = await res.text();
@@ -189,7 +173,7 @@ export async function fetchProducts(
   const url = query.toString()
     ? `${baseUrl}/api/extra/products?${query.toString()}`
     : `${baseUrl}/api/extra/products`;
-  const res = await fetch(url, { headers: authHeaders() });
+  const res = await fetchWithAuth(url);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || "Errore caricamento prodotti");
@@ -201,12 +185,9 @@ export async function createProduct(
   payload: { name: string; price: number; stockQuantity: number; categoryId?: number },
   baseUrl = defaultBaseUrl,
 ) {
-  const res = await fetch(`${baseUrl}/api/extra/products`, {
+  const res = await fetchWithAuth(`${baseUrl}/api/extra/products`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -221,12 +202,9 @@ export async function updateProduct(
   payload: { name: string; price: number; stockQuantity: number; categoryId?: number },
   baseUrl = defaultBaseUrl,
 ) {
-  const res = await fetch(`${baseUrl}/api/extra/products/${id}`, {
+  const res = await fetchWithAuth(`${baseUrl}/api/extra/products/${id}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -240,9 +218,8 @@ export async function deleteProduct(
   id: number | string,
   baseUrl = defaultBaseUrl,
 ) {
-  const res = await fetch(`${baseUrl}/api/extra/products/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(),
+  const res = await fetchWithAuth(`${baseUrl}/api/extra/products/${id}`, {
+    method: "DELETE"
   });
   if (!res.ok) {
     const text = await res.text();
@@ -370,6 +347,27 @@ export async function addExtraCartItem(
   return (await res.json()) as ExtraCartItemApi;
 }
 
+export async function updateExtraCartItem(
+  cartId: number | string,
+  itemId: number | string,
+  payload: { quantity: number },
+  baseUrl = defaultBaseUrl,
+) {
+  const res = await fetch(`${baseUrl}/api/extra/carts/${cartId}/items/${itemId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore aggiornamento elemento carrello");
+  }
+  return (await res.json()) as ExtraCartItemApi;
+}
+
 export async function chargeExtraCart(
   cartId: number | string,
   payload: { cardId: number },
@@ -388,4 +386,19 @@ export async function chargeExtraCart(
     throw new Error(text || "Errore addebito carrello");
   }
   return (await res.json()) as ExtraCartApi;
+}
+
+export async function deleteExtraCart(
+  cartId: number | string,
+  baseUrl = defaultBaseUrl,
+) {
+  const res = await fetch(`${baseUrl}/api/extra/carts/${cartId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Errore cancellazione carrello");
+  }
+  return {} as ExtraCartApi;
 }

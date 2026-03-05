@@ -210,33 +210,41 @@ export default function DailyMenuManagement() {
                   const dish = dishes.find((d) => String(d.id) === selectedDishId);
                   if (!dish) return;
 
-                  const nextPosition = menuItems.length + 1;
-                  const updated = [
-                    ...menuItems,
-                    {
-                      dishId: dish.id,
-                      dishName: dish.name,
-                      categoryName: dish.categoryName,
-                      note: note.trim() ? note.trim() : null,
-                      position: nextPosition,
-                    },
-                  ];
+                  // trova la posizione massima esistente
+const maxPosition = menuItems.length > 0
+  ? Math.max(...menuItems.map(i => i.position ?? 0))
+  : 0;
 
-                  setMenuItems(updated);
+// nuova posizione = primo slot libero dopo il massimo
+const newPosition = maxPosition + 1;
+
+const updated = [
+  ...menuItems,
+  {
+    dishId: dish.id,
+    dishName: dish.name,
+    categoryName: dish.categoryName,
+    note: note.trim() ? note.trim() : null,
+    position: newPosition,
+  },
+];
+
+// NON fare map per ricalcolare le posizioni
+
+setMenuItems(updated);
+
                   setNote("");
                   setSelectedDishId("");
                   setDishQuery("");
                   setShowDishResults(false);
 
                   try {
-                    await updateDailyMenuItems(
-                      dailyId,
-                      updated.map((it) => ({
-                        dishId: it.dishId,
-                        position: it.position,
-                        note: it.note ?? null,
-                      }))
-                    );
+                    const toSave = updated.map((it) => ({
+                      dishId: it.dishId,
+                      position: it.position,
+                      note: it.note ?? null,
+                    }));
+                    await updateDailyMenuItems(dailyId, toSave);
                   } catch (err) {
                     setError(
                       (err as Error).message || "Errore aggiunta elemento"

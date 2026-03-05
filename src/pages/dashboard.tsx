@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardBody } from "@heroui/card";
 
@@ -8,14 +8,25 @@ import DailyMenuManagement from "@/components/restaurant/daily-menu-management";
 import CategoryManagement from "@/components/restaurant/category-management";
 import TablesManagement from "@/components/restaurant/tables-management";
 import HotelManagement from "@/components/hotel/hotel-management";
+import RoomFeaturesManagement from "@/components/hotel/room-features-management";
 import PaymentMethodsManagement from "@/components/system/payment-methods-management";
 import CashDepartmentsManagement from "@/components/system/cash-departments-management";
+import StaffManagement from "@/components/system/staff-management";
+import PSManagement from "@/components/system/ps-management";
 import ShopsManagement from "@/components/extra/shops-management";
 import ProductsManagement from "@/components/extra/products-management";
 import CategoriesManagement from "@/components/extra/categories-management";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  useEffect(() => {
+    const role = localStorage.getItem("role");
+    if (role !== "admin") {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("role");
+      navigate("/");
+    }
+  }, [navigate]);
   const [activeSection, setActiveSection] = useState("restaurant");
 
   const menuItems: SidebarItem[] = [
@@ -25,6 +36,7 @@ export default function DashboardPage() {
       submenu: [
         { id: "hotel-management", label: "Gestione camere" },
         { id: "hotel-agencies", label: "Gestione agenzie" },
+        { id: "hotel-features", label: "Servizi camere" },
       ],
     },
     {
@@ -34,7 +46,6 @@ export default function DashboardPage() {
         { id: "dishes", label: "Gestione Piatti" },
         { id: "categories", label: "Gestione Categorie" },
         { id: "daily-menu", label: "Gestione Menu Giornaliero" },
-        { id: "tables", label: "Dashboard Maitre" },
       ],
     },
     {
@@ -52,6 +63,8 @@ export default function DashboardPage() {
       submenu: [
         { id: "payment-methods", label: "Metodi di pagamento" },
         { id: "cash-departments", label: "Reparti cassa" },
+        { id: "system-staff", label: "Gestione staff" },
+        { id: "ps-management", label: "Gestione PS" },
       ],
     },
   ];
@@ -59,7 +72,7 @@ export default function DashboardPage() {
   const handleLogout = () => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("role");
-    navigate("/auth");
+    navigate("/");
   };
 
   const renderContent = () => {
@@ -78,6 +91,8 @@ export default function DashboardPage() {
         return <HotelManagement view="list" />;
       case "hotel-agencies":
         return <HotelManagement view="agencies" />;
+      case "hotel-features":
+        return <RoomFeaturesManagement />;
       case "extra":
         return (
           <Card>
@@ -99,6 +114,10 @@ export default function DashboardPage() {
         return <PaymentMethodsManagement />;
       case "cash-departments":
         return <CashDepartmentsManagement />;
+      case "system-staff":
+        return <StaffManagement />;
+      case "ps-management":
+        return <PSManagement />;
       default:
         return (
           <Card>

@@ -139,7 +139,7 @@ export default function CategoryManagement() {
       </Card>
 
       <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-        <ModalContent>
+        <ModalContent className="w-[95vw] max-w-[1400px]">
           <ModalHeader className="flex flex-col gap-1">
             Conferma creazione categoria
           </ModalHeader>

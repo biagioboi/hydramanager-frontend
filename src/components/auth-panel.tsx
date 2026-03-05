@@ -57,7 +57,7 @@ export const AuthPanel: React.FC<AuthPanelProps> = ({ onAuth }) => {
       className="w-full max-w-md p-6 rounded-lg bg-default-50 border border-default-100 shadow-sm"
       onSubmit={handleSubmit}
     >
-      <h3 className="text-lg font-semibold mb-4">Sign in</h3>
+      <h3 className="text-lg font-semibold mb-4">Accedi</h3>
 
       <div className="mb-3">
         <Input
@@ -88,10 +88,10 @@ export const AuthPanel: React.FC<AuthPanelProps> = ({ onAuth }) => {
 
       <div className="flex items-center justify-between gap-3">
         <Button className="flex-1" isDisabled={loading} type="submit">
-          {loading ? "Signing in..." : "Sign in"}
+          {loading ? "Accesso in corso..." : "Accedi"}
         </Button>
         <Link color="foreground" href="#" size="sm">
-          Forgot?
+          Password dimenticata?
         </Link>
       </div>
     </form>

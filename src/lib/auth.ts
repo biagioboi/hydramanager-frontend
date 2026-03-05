@@ -1,3 +1,24 @@
+// Helper per logout e redirect automatico
+export function logoutAndRedirect() {
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("role");
+  window.location.href = "/";
+}
+
+// Wrapper fetch autenticato con gestione token scaduto
+export async function fetchWithAuth(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const token = localStorage.getItem("authToken");
+  const headers = {
+    ...(init?.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  const res = await fetch(input, { ...init, headers });
+  if (res.status === 401 || res.status === 403) {
+    logoutAndRedirect();
+    throw new Error("Token scaduto o non valido");
+  }
+  return res;
+}
 export type LoginResponse = {
   token: string;
   role?: string;

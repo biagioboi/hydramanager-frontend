@@ -26,6 +26,11 @@ import {
 } from "@/components/ui/icons";
 
 export const Navbar = () => {
+  // Funzione di refresh, da collegare alla logica di aggiornamento
+  const refreshData = () => {
+    // TODO: collegare alla funzione di aggiornamento dati/notifiche
+    window.dispatchEvent(new CustomEvent("manual-refresh"));
+  };
   const searchInput = (
     <Input
       aria-label="Search"
@@ -83,6 +88,15 @@ export const Navbar = () => {
         justify="end"
       >
         <NavbarItem className="hidden sm:flex gap-2">
+                    <Button
+                      className="text-sm font-normal text-default-600 bg-default-100"
+                      startContent={<span>⟳</span>}
+                      variant="flat"
+                      onClick={refreshData}
+                      title="Aggiorna"
+                    >
+                      Aggiorna
+                    </Button>
           <Link isExternal href={siteConfig.links.twitter} title="Twitter">
             <TwitterIcon className="text-default-500" />
           </Link>
