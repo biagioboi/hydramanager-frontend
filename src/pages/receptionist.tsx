@@ -9,6 +9,7 @@ import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { Chip } from "@heroui/react";
+import { TransactionChip } from "@/components/ui/TransactionChip";
 import {
   Modal,
   ModalBody,
@@ -357,6 +358,12 @@ export default function ReceptionistPage() {
   const [editNotes, setEditNotes] = useState("");
   const [referenceDate, setReferenceDate] = useState(() => getTodayYmd());
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+
+  // Stato locale per i dettagli
+  const [detailsTransaction, setDetailsTransaction] = useState<any | null>(null);
+  const [loadingDetailsTransaction, setLoadingDetailsTransaction] = useState(false);
+  const [showDetailsTransaction, setShowDetailsTransaction] = useState(false);
+
   useEffect(() => {
     const fetchAvailableRooms = async () => {
       try {
@@ -2546,34 +2553,21 @@ const getTouristTax = (booking: BookingApi) => {
                                 <div className="text-sm text-default-500">Nessun movimento</div>
                               ) : (
                                 <div className="flex flex-col gap-2">
-                                  {cardTransactions.map((tx: any) => (
-                                    <div key={tx.id} className="flex items-center justify-between gap-3 px-2 py-2 bg-white border rounded">
-                                      <div className="text-sm">
-                                        <div className="font-medium">{tx.description || tx.type || `Tx ${tx.id}`}</div>
-                                        <div className="text-xs text-default-500">{tx.createdAt ? new Date(tx.createdAt).toLocaleString() : ""}</div>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <div className="text-sm">€ {Number(tx.amount ?? 0).toFixed(2)}</div>
-                                        <Button size="sm" variant="flat" color="danger" onClick={async () => {
-                                          if (!selectedCardId) return;
-                                          try {
-                                            setCardTxLoading(true);
-                                            await fetchWithAuth(`${BASE_URL}/api/bar/cards/${selectedCardId}/transactions/${tx.id}/cancel`, { method: "POST" });
-                                            // refresh
-                                            const txs = await fetchCardTransactions(selectedCardId);
-                                            setCardTransactions(txs || []);
-                                            const cards = await fetchBarCards(selectedBooking!.id);
-                                            setBarCards(cards || []);
-                                            showToast("Movimento cancellato", "success", 2000);
-                                          } catch (err) {
-                                            showToast((err as Error).message || "Errore cancellazione movimento", "error", 3000);
-                                          } finally {
-                                            setCardTxLoading(false);
-                                          }
-                                        }}>Cancella</Button>
-                                      </div>
-                                    </div>
-                                  ))}
+                                  <div className="flex flex-wrap gap-2">
+                                    {cardTransactions.map((tx: any) => (
+                                      <TransactionChip
+                                        key={tx.id}
+                                        tx={tx}
+                                        selectedCardId={selectedCardId}
+                                        selectedBooking={selectedBooking}
+                                        fetchCardTransactions={fetchCardTransactions}
+                                        setCardTransactions={setCardTransactions}
+                                        fetchBarCards={fetchBarCards}
+                                        setBarCards={setBarCards}
+                                        showToast={showToast}
+                                      />
+                                    ))}
+                                  </div>
                                 </div>
                               )}
                             </div>
