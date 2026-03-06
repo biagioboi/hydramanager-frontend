@@ -10,11 +10,12 @@ import { siteConfig } from "@/config/site";
 import DefaultLayout from "@/layouts/default";
 
 export default function IndexPage() {
+  const logo = import.meta.env.VITE_URL_LOGO ?? import.meta.env.URL_LOGO ?? "/hydraclub-logo.jpg";
   return (
     <DefaultLayout>
       <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
         <div className="mt-10 w-full flex flex-col items-center justify-center">
-          <img src="/hydraclub-logo.jpg" alt="HydraClub Logo" className="w-60 h-32 object-contain mb-2" />
+          <img src={logo} alt="Logo" className="w-60 h-32 object-contain mb-2" />
           <AuthPanel onAuth={(creds) => console.log("auth", creds)} />
         </div>
       </section>

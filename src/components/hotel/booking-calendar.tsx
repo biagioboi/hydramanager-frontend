@@ -75,25 +75,25 @@ function formatTreatment(treatment: BookingApi["treatment"]) {
   return "Pensione completa";
 }
 
-function HalfDiamond({ side, className }: { side: "left" | "right"; className: string }) {
+function HalfDiamond({
+  side,
+  className,
+}: {
+  side: "left" | "right";
+  className: string;
+}) {
   const style: React.CSSProperties =
     side === "left"
       ? {
           clipPath: "polygon(0% 50%, 100% 0%, 100% 100%)",
-          width: "55%",
-          right: 0,
-          pointerEvents: "none",
         }
       : {
           clipPath: "polygon(100% 50%, 0% 0%, 0% 100%)",
-          width: "55%",
-          left: 0,
-          pointerEvents: "none",
         };
 
   return (
     <div
-      className={["absolute top-0 bottom-0", className].join(" ")}
+      className={["absolute inset-0", className].join(" ")}
       style={style}
       aria-hidden="true"
     />
@@ -196,10 +196,16 @@ export default function BookingCalendar({
     return groups;
   }, [daysInMonth]);
 
+  const isVisibleBooking = (booking: BookingApi) => booking.status !== "CANCELLED" && booking.status !== "DEPARTED";
+
+  const visibleBookings = useMemo(() => {
+    return bookings.filter(isVisibleBooking);
+  }, [bookings]);
+
   const bookingsByRoom = useMemo(() => {
     const map = new Map<string, BookingApi[]>();
     for (const r of rooms) map.set(r.roomNumber, []);
-    for (const b of bookings) {
+    for (const b of visibleBookings) {
       if (!b.roomNumber) continue;
       if (!map.has(b.roomNumber)) map.set(b.roomNumber, []);
       map.get(b.roomNumber)!.push(b);
@@ -217,7 +223,7 @@ export default function BookingCalendar({
     const lastDay = daysInMonth[daysInMonth.length - 1];
 
     rooms.forEach((room) => map.set(room.roomNumber, []));
-    bookings.forEach((booking) => {
+    visibleBookings.forEach((booking) => {
       if (!booking.roomNumber) return;
       const startDate = parseYMD(booking.checkInDate);
       const endDate = parseYMD(booking.checkOutDate);
@@ -245,7 +251,7 @@ export default function BookingCalendar({
     const lastDay = daysInMonth[daysInMonth.length - 1];
 
     rooms.forEach((room) => map.set(room.roomNumber, []));
-    bookings.forEach((booking) => {
+    visibleBookings.forEach((booking) => {
       if (!booking.roomNumber) return;
       const startDate = parseYMD(booking.checkInDate);
       const endDate = parseYMD(booking.checkOutDate);
@@ -518,31 +524,12 @@ export default function BookingCalendar({
           )}
         </div>
       </div>
-
-      <div className="relative flex-1 overflow-auto" ref={containerRef}>
-        <div className="relative">
-          {dragGhost && (
-            <div
-              className="pointer-events-none absolute z-30"
-              style={{
-                left: dragGhost.x,
-                top: dragGhost.y,
-                width: dragGhost.width,
-                height: dragGhost.height,
-              }}
-              aria-hidden="true"
-            >
-              <div className="flex h-full items-center rounded-md border border-primary-300 bg-primary-200/90 px-2 text-[11px] font-semibold text-foreground shadow-lg ring-1 ring-primary-200/60">
-                {surnameFromBooking(dragGhost.booking)}
-              </div>
-            </div>
-          )}
-          {bookingTooltip && !bookingDragRef.current && (
+{bookingTooltip && !bookingDragRef.current && (
             <div
               className={`pointer-events-none absolute z-[9999] -translate-x-1/2 ${
                 bookingTooltip.placement === "top" ? "-translate-y-full" : "translate-y-0"
               }`}
-              style={{ left: bookingTooltip.x, top: bookingTooltip.y }}
+              style={{ left: bookingTooltip.x, top: bookingTooltip.y +130 }}
               aria-hidden="true"
             >
               <div className="rounded-md border border-default-200 bg-white px-3 py-2 text-[11px] shadow-lg">
@@ -592,6 +579,25 @@ export default function BookingCalendar({
               </div>
             </div>
           )}
+      <div className="relative flex-1 overflow-auto" ref={containerRef}>
+        <div className="relative">
+          {dragGhost && (
+            <div
+              className="pointer-events-none absolute z-30"
+              style={{
+                left: dragGhost.x,
+                top: dragGhost.y,
+                width: dragGhost.width,
+                height: dragGhost.height,
+              }}
+              aria-hidden="true"
+            >
+              <div className="flex h-full items-center rounded-md border border-primary-300 bg-primary-200/90 px-2 text-[15px] font-bold text-foreground shadow-lg ring-1 ring-primary-200/60">
+                {surnameFromBooking(dragGhost.booking)}
+              </div>
+            </div>
+          )}
+          
           {hoverLineLeft !== null && (
             <div
               className="pointer-events-none absolute bottom-0 z-10 w-px bg-red-400"
@@ -808,7 +814,7 @@ export default function BookingCalendar({
                         role="button"
                         tabIndex={0}
                       >
-                        <span className="max-w-full truncate text-[11px] font-medium text-foreground/90">
+                        <span className="max-w-full truncate text-[14px] font-medium text-foreground/90">
                           {middleRange.surname}
                         </span>
                       </div>
@@ -820,167 +826,186 @@ export default function BookingCalendar({
               }
 
               if (startRanges.length > 0 || endRanges.length > 0) {
-                const cellIndex = dayIndex;
-                const ymd = toYMD(daysInMonth[cellIndex]);
-                const isSaturday = daysInMonth[cellIndex].getDay() === 6;
-                const isSunday = daysInMonth[cellIndex].getDay() === 0;
-                const weekendClass = isSunday ? "bg-red-50" : isSaturday ? "bg-default-100" : "";
-                const showLeft = startRanges.length > 0;
-                const showRight = endRanges.length > 0;
-                const activeRange = startRanges[0] ?? endRanges[0];
-                const isMultiDay = Boolean(activeRange && activeRange.end > activeRange.start);
-                const labelRange = startRanges.find((item) => item.start === item.end) ?? null;
-                const hasBothEdges = showLeft && showRight;
-                const removeRightBorder =
-                  (showLeft && !showRight && isMultiDay) || Boolean(labelRange) || hasBothEdges;
-                const removeLeftBorder =
-                  (showRight && !showLeft && isMultiDay) || Boolean(labelRange) || hasBothEdges;
-                const isSelected =
-                  selection?.roomNumber === room.roomNumber &&
-                  cellIndex >= Math.min(selection.startIndex, selection.endIndex) &&
-                  cellIndex <= Math.max(selection.startIndex, selection.endIndex);
-                const canSelect = showRight && !showLeft;
-                const canEndOnStart = showLeft && !showRight;
-                const label = labelRange?.surname;
-                const color = (startRanges[0] ?? endRanges[0])?.colorClassName ?? "bg-default-200";
-                const booking = (startRanges[0] ?? endRanges[0])?.booking;
+  const cellIndex = dayIndex;
+  const ymd = toYMD(daysInMonth[cellIndex]);
+  const isSaturday = daysInMonth[cellIndex].getDay() === 6;
+  const isSunday = daysInMonth[cellIndex].getDay() === 0;
+  const weekendClass = isSunday ? "bg-red-50" : isSaturday ? "bg-default-100" : "";
 
-                cells.push(
-                  <td
-                    key={`${room.id}-${ymd}-boundary`}
-                    className={`border-y border-default-200 border-x-0 p-0 ${weekendClass} ${
-                      dragOverRoom === room.roomNumber ? "ring-1 ring-primary-200" : ""
-                    } ${removeLeftBorder ? "border-l-0" : ""} ${
-                      removeRightBorder ? "border-r-0" : ""
-                    }`}
-                    data-room={room.roomNumber}
-                    data-index={cellIndex}
-                    onPointerEnter={() => {
-                      if (!draggingRef.current) return;
-                      if (canSelect || canEndOnStart) {
-                        updateSelection(room.roomNumber, cellIndex);
-                      }
-                    }}
-                    onClick={() => {
-                      if (!booking || draggingRef.current) return;
-                      if (bookingDragMovedRef.current) {
-                        bookingDragMovedRef.current = false;
-                        return;
-                      }
-                      onBookingSelect?.(booking);
-                    }}
-                  >
-                    <div className="relative w-full" style={{ height: rowHeight }}>
-                      {canSelect && (
-                        <div
-                          className={["absolute inset-0", isSelected ? "bg-primary-100" : ""].join(" ")}
-                          style={{ height: rowHeight, touchAction: "none" }}
-                          onPointerDown={(event) => {
-                            event.preventDefault();
-                            console.debug("[calendar] pointerdown", {
-                              roomNumber: room.roomNumber,
-                              dayIndex: cellIndex,
-                            });
-                            beginSelection(room.roomNumber, cellIndex);
-                          }}
-                          data-room={room.roomNumber}
-                          data-index={cellIndex}
-                          role="button"
-                          tabIndex={0}
-                        />
-                      )}
-                      {canEndOnStart && (
-                        <div
-                          className={["absolute inset-0", isSelected ? "bg-primary-100" : ""].join(" ")}
-                          style={{ height: rowHeight, touchAction: "none" }}
-                          data-room={room.roomNumber}
-                          data-index={cellIndex}
-                          aria-hidden="true"
-                        />
-                      )}
-                      {showLeft && (
-                        <div
-                          className="absolute inset-0 z-10"
-                          onPointerDown={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            if (booking) beginBookingDrag(booking, event);
-                          }}
-                          onContextMenu={(event) => {
-                            event.preventDefault();
-                            if (!booking || !onBookingContextMenu) return;
-                            onBookingContextMenu(booking, event.clientX, event.clientY);
-                          }}
-                          onMouseEnter={(event) => booking && showBookingTooltip(booking, event.currentTarget)}
-                          onMouseLeave={hideBookingTooltip}
-                        >
-                          <HalfDiamond side="left" className={color} />
-                        </div>
-                      )}
-                      {showRight && (
-                        <div
-                          className="absolute inset-0 z-10"
-                          onPointerDown={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            if (booking) beginBookingDrag(booking, event);
-                          }}
-                          onContextMenu={(event) => {
-                            event.preventDefault();
-                            if (!booking || !onBookingContextMenu) return;
-                            onBookingContextMenu(booking, event.clientX, event.clientY);
-                          }}
-                          onMouseEnter={(event) => booking && showBookingTooltip(booking, event.currentTarget)}
-                          onMouseLeave={hideBookingTooltip}
-                        >
-                          <HalfDiamond side="right" className={color} />
-                        </div>
-                      )}
-                      {label && (
-                        <div
-                          className={["absolute inset-0 flex items-center justify-center", color].join(" ")}
-                          onPointerDown={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            beginBookingDrag(booking!, event);
-                          }}
-                          onContextMenu={(event) => {
-                            event.preventDefault();
-                            if (!booking || !onBookingContextMenu) return;
-                            onBookingContextMenu(booking, event.clientX, event.clientY);
-                          }}
-                          onMouseEnter={(event) => booking && showBookingTooltip(booking, event.currentTarget)}
-                          onMouseLeave={hideBookingTooltip}
-                          onClick={() => {
-                            if (!booking) return;
-                            if (bookingDragMovedRef.current) {
-                              bookingDragMovedRef.current = false;
-                              return;
-                            }
-                            onBookingSelect?.(booking);
-                          }}
-                          role="button"
-                          tabIndex={0}
-                        >
-                          <span className="max-w-full truncate text-[11px] font-medium text-foreground/90">
-                            {label}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                );
+  const showLeft = startRanges.length > 0;
+  const showRight = endRanges.length > 0;
 
-                dayIndex += 1;
-                continue;
+  const startRange = startRanges[0] ?? null;
+  const endRange = endRanges[0] ?? null;
+
+  const startBooking = startRange?.booking ?? null;
+  const endBooking = endRange?.booking ?? null;
+
+  const startColor = startRange?.colorClassName ?? "bg-default-200";
+  const endColor = endRange?.colorClassName ?? "bg-default-200";
+
+  const activeRange = startRange ?? endRange;
+  const isMultiDay = Boolean(activeRange && activeRange.end > activeRange.start);
+
+  const labelRange = startRanges.find((item) => item.start === item.end) ?? null;
+  const label = labelRange?.surname ?? null;
+  const labelBooking = labelRange?.booking ?? null;
+  const labelColor = labelRange?.colorClassName ?? "bg-default-200";
+
+  const hasBothEdges = showLeft && showRight;
+
+  const removeRightBorder =
+    (showLeft && !showRight && isMultiDay) || Boolean(labelRange) || hasBothEdges;
+  const removeLeftBorder =
+    (showRight && !showLeft && isMultiDay) || Boolean(labelRange) || hasBothEdges;
+
+  const isSelected =
+    selection?.roomNumber === room.roomNumber &&
+    cellIndex >= Math.min(selection.startIndex, selection.endIndex) &&
+    cellIndex <= Math.max(selection.startIndex, selection.endIndex);
+
+  const canSelect = showRight && !showLeft;
+  const canEndOnStart = showLeft && !showRight;
+
+  const booking = labelBooking ?? startBooking ?? endBooking;
+
+  cells.push(
+    <td
+      key={`${room.id}-${ymd}-boundary`}
+      className={`border-y border-default-200 border-x-0 p-0 ${weekendClass} ${
+        dragOverRoom === room.roomNumber ? "ring-1 ring-primary-200" : ""
+      } ${removeLeftBorder ? "border-l-0" : ""} ${
+        removeRightBorder ? "border-r-0" : ""
+      }`}
+      data-room={room.roomNumber}
+      data-index={cellIndex}
+      onPointerEnter={() => {
+        if (!draggingRef.current) return;
+        if (canSelect || canEndOnStart) {
+          updateSelection(room.roomNumber, cellIndex);
+        }
+      }}
+      onClick={() => {
+        if (!booking || draggingRef.current) return;
+        if (bookingDragMovedRef.current) {
+          bookingDragMovedRef.current = false;
+          return;
+        }
+        onBookingSelect?.(booking);
+      }}
+    >
+      <div className="relative w-full" style={{ height: rowHeight }}>
+        {canSelect && (
+          <div
+            className={["absolute inset-0", isSelected ? "bg-primary-100" : ""].join(" ")}
+            style={{ height: rowHeight, touchAction: "none" }}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              beginSelection(room.roomNumber, cellIndex);
+            }}
+            data-room={room.roomNumber}
+            data-index={cellIndex}
+            role="button"
+            tabIndex={0}
+          />
+        )}
+
+        {canEndOnStart && (
+          <div
+            className={["absolute inset-0", isSelected ? "bg-primary-100" : ""].join(" ")}
+            style={{ height: rowHeight, touchAction: "none" }}
+            data-room={room.roomNumber}
+            data-index={cellIndex}
+            aria-hidden="true"
+          />
+        )}
+
+        {showLeft && startBooking && (
+          <div
+            className="absolute top-0 bottom-0 right-0 z-10"
+            style={{ width: "55%" }}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              beginBookingDrag(startBooking, event);
+            }}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              if (!onBookingContextMenu) return;
+              onBookingContextMenu(startBooking, event.clientX, event.clientY);
+            }}
+            onMouseEnter={(event) => showBookingTooltip(startBooking, event.currentTarget)}
+            onMouseLeave={hideBookingTooltip}
+          >
+            <HalfDiamond side="left" className={startColor} />
+          </div>
+        )}
+
+        {showRight && endBooking && (
+          <div
+            className="absolute top-0 bottom-0 left-0 z-10"
+            style={{ width: "55%" }}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              beginBookingDrag(endBooking, event);
+            }}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              if (!onBookingContextMenu) return;
+              onBookingContextMenu(endBooking, event.clientX, event.clientY);
+            }}
+            onMouseEnter={(event) => showBookingTooltip(endBooking, event.currentTarget)}
+            onMouseLeave={hideBookingTooltip}
+          >
+            <HalfDiamond side="right" className={endColor} />
+          </div>
+        )}
+
+        {label && labelBooking && (
+          <div
+            className={["absolute inset-0 z-20 flex items-center justify-center", labelColor].join(" ")}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              beginBookingDrag(labelBooking, event);
+            }}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              if (!onBookingContextMenu) return;
+              onBookingContextMenu(labelBooking, event.clientX, event.clientY);
+            }}
+            onMouseEnter={(event) => showBookingTooltip(labelBooking, event.currentTarget)}
+            onMouseLeave={hideBookingTooltip}
+            onClick={() => {
+              if (bookingDragMovedRef.current) {
+                bookingDragMovedRef.current = false;
+                return;
               }
+              onBookingSelect?.(labelBooking);
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            <span className="max-w-full truncate text-[11px] font-medium text-foreground/90">
+              {label}
+            </span>
+          </div>
+        )}
+      </div>
+    </td>
+  );
+
+  dayIndex += 1;
+  continue;
+}
 
               dayIndex += 1;
             }
 
             return (
               <tr key={room.id}>
-                <td className="border border-default-200 bg-default-50 px-2 py-1 text-sm font-medium">
+                <td className="border border-default-200 bg-default-50 px-2 text-sm font-large">
                   {room.roomNumber} · {room.roomType}
                 </td>
                 {cells}

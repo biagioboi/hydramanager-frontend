@@ -1516,7 +1516,7 @@ const getTouristTax = (booking: BookingApi) => {
         <div className="flex-1 min-h-0 relative">
           <Card className="h-full">
             <CardBody className="h-full overflow-auto">
-              <div className="grid min-h-0 h-full max-h-full lg:grid-cols-10 md:grid-cols-8 grid-cols-6 gap-1 overflow-y-auto">
+              <div className="grid min-h-0 h-full max-h-full lg:grid-cols-10 md:grid-cols-8 sm:grid-cols-4 grid-cols-3 gap-2 overflow-y-auto">
                 {orderedRooms.map((room) => {
                   const status = roomStatusMap.get(room.roomNumber) || "FREE";
                   const statusClass =
@@ -1714,7 +1714,7 @@ const getTouristTax = (booking: BookingApi) => {
         placement="center"
         size="lg"
       >
-        <ModalContent className="w-[95vw] max-w-[1400px]">
+        <ModalContent className="w-full h-full sm:w-[95vw] sm:max-w-[1400px] sm:h-auto">
           {(onClose) => (
             <>
               <ModalHeader className="flex flex-col gap-1">
@@ -1729,7 +1729,7 @@ const getTouristTax = (booking: BookingApi) => {
                   {notifications.length === 0 && !notificationsLoading && (
                     <div className="px-3 py-2 text-xs text-default-500">Nessuna notifica</div>
                   )}
-                  {[...notifications].sort((a, b) => (b.bookingId ?? 0) - (a.bookingId ?? 0)).map((notification) => (
+                  {[...notifications].sort((a, b) => (new Date(b.createdAt)?.getTime() ?? 0) - (new Date(a.createdAt)?.getTime() ?? 0)).map((notification) => (
                     <div
                       key={notification.id}
                       className={`flex items-start justify-between gap-3 border-b border-default-200 px-3 py-2 last:border-b-0 border-l-4 ${getNotificationClasses(
@@ -1821,7 +1821,7 @@ const getTouristTax = (booking: BookingApi) => {
         placement="center"
         size="xl"
       >
-        <ModalContent className="w-[95vw] max-w-[1400px]">
+        <ModalContent className="w-full max-h-[90vh] overflow-y-auto sm:w-[95vw] sm:max-w-[1400px] sm:h-auto py-2">
           {(onClose) => (
             <>
               <ModalHeader className="flex flex-col gap-1">
@@ -1876,7 +1876,7 @@ const getTouristTax = (booking: BookingApi) => {
                     {detailsTab === "details" && (
                      <div className="grid md:grid-cols-12 gap-3 text-sm">
                       
-                        <div className="md:col-span-8 grid grid-cols-1 md:grid-cols-8 gap-2">
+                        <div className="md:col-span-8 grid grid-cols-4 md:grid-cols-8 gap-2">
                         
                         <Input
                           label="Nome"
@@ -1889,7 +1889,7 @@ const getTouristTax = (booking: BookingApi) => {
                        <Input
                           label="Cognome"
                           type="text"
-                          className="md:col-span-3"
+                          className="col-span-2 md:col-span-3"
                           value={editGuestLastName}
                           onChange={(event) => setEditGuestLastName(event.target.value)}
                         />
@@ -1912,14 +1912,14 @@ const getTouristTax = (booking: BookingApi) => {
                         <Input
                           label="Check-in"
                           type="date"
-                          className="md:col-span-2"
+                          className="col-span-2"
                           value={editCheckInDate}
                           onChange={(event) => setEditCheckInDate(event.target.value)}
                         />
                         <Input
                           label="Check-out"
                           type="date"
-                          className="md:col-span-2"
+                          className="col-span-2"
                           value={editCheckOutDate}
                           onChange={(event) => setEditCheckOutDate(event.target.value)}
                         />
@@ -1949,7 +1949,7 @@ const getTouristTax = (booking: BookingApi) => {
                         <Select
                           label="Trattamento"
                           selectedKeys={[editTreatment]}
-                          className="md:col-span-2"
+                          className="col-span-2"
                           onChange={(event) => setEditTreatment(event.target.value as BookingApi["treatment"])}
                         >
                           {TREATMENTS.map((option) => (
@@ -1961,20 +1961,20 @@ const getTouristTax = (booking: BookingApi) => {
                         <Input
                           label="Email ospite"
                           type="email"
-                          className="md:col-span-3"
+                          className="col-span-2 md:col-span-3"
                           value={editGuestEmail}
                           onChange={(event) => setEditGuestEmail(event.target.value)}
                         />
                         <Input
                           label="Telefono ospite"
                           type="tel"
-                          className="md:col-span-3"
+                          className="col-span-2 md:col-span-3"
                           value={editGuestPhone}
                           onChange={(event) => setEditGuestPhone(event.target.value)}
                         />
                         <Select
                           label="Stato"
-                          className="md:col-span-2"
+                          className="col-span-2"
                           selectedKeys={[editStatus]}
                           onChange={(event) => setEditStatus(event.target.value as BookingApi["status"])}
                         >
@@ -1982,6 +1982,8 @@ const getTouristTax = (booking: BookingApi) => {
                             <SelectItem key={option.key}>{option.label}</SelectItem>
                           ))}
                         </Select>
+                         {agencies && agencies.length > 0 && (
+                          <>
 <Select
   label="Agenzia"
   className="md:col-span-2"
@@ -2004,12 +2006,12 @@ const getTouristTax = (booking: BookingApi) => {
 
                         <Input
                           label="Data agenzia"
-                          className="md:col-span-2"
+                          className="col-span-2 md:col-span-2"
                           type="date"
                           value={editAgencyBookingDate}
                           onChange={(event) => setEditAgencyBookingDate(event.target.value)}
                         />
-
+</>)}
 
                       </div>
                       <div className="md:col-span-4 flex flex-col">
@@ -2366,13 +2368,13 @@ const getTouristTax = (booking: BookingApi) => {
                         {/* Form nuovo registrato */}
                         <div className="col-span-2 border-t pt-4 mt-2">
                           <div className="font-semibold mb-2">Aggiungi nuovo registrato</div>
-                          <div className="grid gap-3 md:grid-cols-12">
-                            <Input label="Nome" value={psFirstName} className="col-span-2" onChange={e => setPsFirstName(e.target.value)} />
-                            <Input label="Cognome" value={psLastName} className="col-span-2" onChange={e => setPsLastName(e.target.value)} />
-                            <Input label="Data di nascita" type="date" value={psBirthDate} className="col-span-2" onChange={e => setPsBirthDate(e.target.value)} />
+                          <div className="grid gap-3 grid-cols-3 md:grid-cols-12">
+                            <Input label="Nome" value={psFirstName} className="md:col-span-2" onChange={e => setPsFirstName(e.target.value)} />
+                            <Input label="Cognome" value={psLastName} className="md:col-span-2" onChange={e => setPsLastName(e.target.value)} />
+                            <Input label="Data di nascita" type="date" value={psBirthDate} className="md:col-span-2" onChange={e => setPsBirthDate(e.target.value)} />
                             <Autocomplete
                               label="Stato di nascita"
-                              className="col-span-3"
+                              className="md:col-span-3"
                               inputValue={psSelectedState}
                               onInputChange={val => {
                                 const found = psStates.find(opt => opt.label === val);
@@ -2394,7 +2396,7 @@ const getTouristTax = (booking: BookingApi) => {
                             <Autocomplete
                               label="Luogo di nascita"
                               allowsCustomValue={true}
-                              className="col-span-3"
+                              className="md:col-span-3"
                               inputValue={psBirthPlace}
                               onInputChange={val => {
                                 setPsBirthPlace(val);
@@ -2416,7 +2418,7 @@ const getTouristTax = (booking: BookingApi) => {
                             {/* Stato di residenza (cittadinanza) */}
                             <Autocomplete
                               label="Stato di residenza"
-                              className="col-span-3"
+                              className="md:col-span-3"
                               inputValue={psSelectedResidenceState}
                               onInputChange={val => {
                                 const found = psStates.find(opt => opt.label === val);
@@ -2439,7 +2441,7 @@ const getTouristTax = (booking: BookingApi) => {
                             {/* Comune di residenza (autocomplete dinamico) */}
                             <Autocomplete
                               label="Comune di residenza"
-                              className="col-span-3"
+                              className="md:col-span-3"
                               allowsCustomValue={true}
                               inputValue={psResidenceMunicipality}
                               onInputChange={val => {
