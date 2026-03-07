@@ -8,6 +8,7 @@ export default function WelcomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [consent, setConsent] = useState(false);
+  const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8080";
 
   useEffect(() => {
     if (tokenTemporaneo) {
@@ -20,7 +21,7 @@ export default function WelcomePage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/auth/temporary-access/${tokenTemporaneo}`);
+      const res = await fetch(`${BASE_URL}/api/auth/login?token=${tokenTemporaneo}`);
       if (!res.ok) throw new Error("Errore autenticazione");
       const data = await res.json();
       if (!data.token) throw new Error("Token non ricevuto");
