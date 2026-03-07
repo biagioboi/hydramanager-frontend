@@ -1,6 +1,52 @@
 import { Button } from "@heroui/button";
+import { useEffect, useState } from "react";
+
+interface Booking {
+  roomName: string;
+  checkIn: string;
+  checkOut: string;
+}
+
+function formatDateIT(dateStr: string) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("it-IT", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+}
 
 export default function GuestPage() {
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8080";
+
+  useEffect(() => {
+    const fetchBooking = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const token = localStorage.getItem("authToken") || localStorage.getItem("tokenTemporaneo");
+        const res = await fetch(`${BASE_URL}/api/bookings/my-booking`, {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        });
+        if (!res.ok) throw new Error("Errore nel recupero del soggiorno");
+        const data = await res.json();
+        setBooking({
+          roomName: data.roomNumber,
+          checkIn: data.checkInDate,
+          checkOut: data.checkOutDate
+        });
+      } catch (err: any) {
+        setError(err.message || "Errore generico");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBooking();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-[#f5e9d3]">
       {/* Header/logo */}
@@ -22,12 +68,22 @@ export default function GuestPage() {
             Qui puoi consultare le informazioni sul tuo soggiorno, scoprire i servizi dell’Hotel e contattare la reception in ogni momento.<br />
             <span className="block mt-2 text-[#3a6c4f] font-medium">Natura, spazio, libertà.</span>
           </p>
-          {/* Placeholder info soggiorno */}
+          {/* Info soggiorno */}
           <div className="w-full bg-[#f5e9d3] rounded-lg p-4 mb-6 border border-[#e0d6c3]">
             <div className="text-[#1e3a5c] font-semibold mb-1">Il tuo soggiorno</div>
-            <div className="text-sm text-gray-700">Camera/Bungalow: <span className="font-medium">(da implementare)</span></div>
-            <div className="text-sm text-gray-700">Check-in: <span className="font-medium">(da implementare)</span></div>
-            <div className="text-sm text-gray-700">Check-out: <span className="font-medium">(da implementare)</span></div>
+            {loading ? (
+              <div className="text-sm text-gray-700">Caricamento...</div>
+            ) : error ? (
+              <div className="text-sm text-red-600">{error}</div>
+            ) : booking ? (
+              <>
+                <div className="text-sm text-gray-700">Camera/Bungalow: <span className="font-medium">{booking.roomName}</span></div>
+                <div className="text-sm text-gray-700">Check-in: <span className="font-medium">{formatDateIT(booking.checkIn)}</span></div>
+                <div className="text-sm text-gray-700">Check-out: <span className="font-medium">{formatDateIT(booking.checkOut)}</span></div>
+              </>
+            ) : (
+              <div className="text-sm text-gray-700">Nessun soggiorno trovato.</div>
+            )}
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full">
             <Button
