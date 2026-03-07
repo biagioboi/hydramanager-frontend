@@ -61,15 +61,9 @@ export default function GuestPage() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8">
-        <div className="bg-white/90 rounded-2xl shadow-xl p-8 max-w-lg w-full flex flex-col items-center border border-[#e0d6c3]">
-          <h2 className="text-xl font-semibold text-[#1e3a5c] mb-2 tracking-wide">Ciao Ospite!</h2>
-          <p className="text-gray-700 text-center mb-6">
-            Qui puoi consultare le informazioni sul tuo soggiorno, scoprire i servizi dell’Hotel e contattare la reception in ogni momento.<br />
-            <span className="block mt-2 text-[#3a6c4f] font-medium">Natura, spazio, libertà.</span>
-          </p>
-          {/* Info soggiorno */}
-          <div className="w-full bg-[#f5e9d3] rounded-lg p-4 mb-6 border border-[#e0d6c3]">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 w-full">
+        <div className="bg-white/90 rounded-2xl shadow-xl p-6 max-w-lg w-full flex flex-col items-center border border-[#e0d6c3] mb-6">
+          <div className="w-full bg-[#f5e9d3] rounded-lg p-4 border border-[#e0d6c3] mb-2">
             <div className="text-[#1e3a5c] font-semibold mb-1">Il tuo soggiorno</div>
             {loading ? (
               <div className="text-sm text-gray-700">Caricamento...</div>
@@ -85,7 +79,50 @@ export default function GuestPage() {
               <div className="text-sm text-gray-700">Nessun soggiorno trovato.</div>
             )}
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full">
+        </div>
+        {/* Azioni principali in stile "mini-app" */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg mb-8">
+          <Button
+            as="a"
+            href="/menu-giornaliero"
+            className="bg-[#1e3a5c] text-white hover:bg-[#25446e] font-semibold rounded-xl shadow h-20 flex flex-col items-center justify-center text-lg"
+          >
+            <span role="img" aria-label="Menu">🍽️</span>
+            Menu giornaliero
+          </Button>
+          <Button
+            as="a"
+            href="/tessera-bar"
+            className="bg-[#3a6c4f] text-white hover:bg-[#29513a] font-semibold rounded-xl shadow h-20 flex flex-col items-center justify-center text-lg"
+          >
+            <span role="img" aria-label="Bar">🍹</span>
+            Tessera bar
+          </Button>
+          <Button
+            as="a"
+            href="/info-utili"
+            className="bg-[#e0b646] text-[#1e3a5c] hover:bg-[#e6c76a] font-semibold rounded-xl shadow h-20 flex flex-col items-center justify-center text-lg"
+          >
+            <span role="img" aria-label="Info">ℹ️</span>
+            Info utili
+          </Button>
+          <Button
+            as="a"
+            href="/escursioni"
+            className="bg-[#1e3a5c] text-white hover:bg-[#25446e] font-semibold rounded-xl shadow h-20 flex flex-col items-center justify-center text-lg"
+          >
+            <span role="img" aria-label="Escursioni">🏞️</span>
+            Escursioni
+          </Button>
+        </div>
+        {/* Messaggio di benvenuto */}
+        <div className="bg-white/80 rounded-xl shadow p-4 max-w-lg w-full text-center border border-[#e0d6c3]">
+          <h2 className="text-xl font-semibold text-[#1e3a5c] mb-2 tracking-wide">Ciao Ospite!</h2>
+          <p className="text-gray-700 text-center mb-2">
+            Qui puoi consultare le informazioni sul tuo soggiorno, scoprire i servizi dell’Hotel e contattare la reception in ogni momento.<br />
+            <span className="block mt-2 text-[#3a6c4f] font-medium">Natura, spazio, libertà.</span>
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 w-full mt-2">
             <Button
               as="a"
               href="https://hotelhydracilento.it/esperienza/"
