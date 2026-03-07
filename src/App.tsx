@@ -15,6 +15,8 @@ import WaiterPage from "@/pages/waiter";
 import MaitrePage from "@/pages/maitre";
 import BarmanPage from "@/pages/barman";
 import RepairmanPage from "@/pages/repairman";
+import WelcomePage from "@/pages/welcome/tokenTemporaneo";
+import GuestPage from "@/pages/guest";
 
 
 function getDashboardPathByRole(role?: string): string {
@@ -49,6 +51,11 @@ function App() {
             ? <Navigate to={getDashboardPathByRole(role)} replace state={{ from: location }} />
             : <IndexPage />
         }
+      />
+
+      <Route 
+        path="/welcome/:tokenTemporaneo" 
+        element={<WelcomePage/>} 
       />
       <Route
         path="/dashboard"
@@ -98,6 +105,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/guest" element={<ProtectedRoute><GuestPage /></ProtectedRoute>} />
       </Routes>
     </Providers>
   );
